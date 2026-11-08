@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b0f14"><meta name="color-scheme" content="dark">
+<link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icons/icon-192.png"><link rel="apple-touch-icon" href="icons/icon-180.png">
+<title>Lumo</title>
+<style>
+:root{--bg:#0b0f14;--pan:#141a22;--line:#232c38;--tx:#eef2f7;--mu:#8b97a8;--ac:#2dd4bf}
+*{box-sizing:border-box}[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.5 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;border-bottom:1px solid var(--line);position:sticky;top:0;background:#0b0f14ee;backdrop-filter:blur(8px);z-index:5}
+.brand{font-weight:800;letter-spacing:2px;color:var(--ac);text-decoration:none}
+nav{display:flex;gap:4px;overflow-x:auto;max-width:100%}@media(max-width:600px){nav{width:100%}}nav a{color:var(--mu);text-decoration:none;padding:7px 9px;border-radius:9px;font-weight:600;font-size:14px;white-space:nowrap}nav a.on{color:var(--tx);background:var(--pan)}
+main{max-width:1100px;margin:auto;padding:18px}
+h2{font-size:17px;margin:22px 0 10px}h2 small{color:var(--mu);font-weight:400;font-size:12px;margin-left:6px}
+.muted{color:var(--mu)}.err{color:#ff8a8a}
+.row{display:flex;gap:12px;overflow-x:auto;padding-bottom:8px}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:14px}
+.card{position:relative;color:inherit;text-decoration:none;flex:0 0 130px;font-size:13px}.grid .card{flex:auto}
+.card img{width:100%;aspect-ratio:2/3;object-fit:cover;background:var(--pan);border-radius:10px;display:block}.card span{display:block;margin-top:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+input,select{background:var(--pan);border:1px solid var(--line);color:var(--tx);border-radius:10px;padding:12px 14px;font:inherit;min-width:0}
+button,.btn{background:var(--ac);color:#04201c;border:0;border-radius:10px;padding:12px 16px;font:inherit;font-weight:700;cursor:pointer;text-decoration:none;display:inline-block}
+button.ghost{background:var(--pan);color:var(--tx);border:1px solid var(--line)}
+form{display:flex;gap:8px;flex-wrap:wrap}form input{flex:1;min-width:180px}
+.ad{display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--pan);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-top:10px}.ad small{display:block;color:var(--mu);word-break:break-all}
+.hero{background-size:cover;background-position:center;border-radius:16px;padding:60px 18px 18px;margin-bottom:14px;box-shadow:inset 0 -140px 100px -40px var(--bg)}.hero h1{margin:0 0 4px;font-size:clamp(26px,5vw,40px)}
+video{width:100%;max-height:70vh;background:#000;border-radius:12px}
+.eps{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}.eps button{background:var(--pan);color:var(--tx);border:1px solid var(--line);padding:8px 12px}.eps button.on{border-color:var(--ac);color:var(--ac)}
+.src{display:flex;justify-content:space-between;align-items:center;gap:10px;border-bottom:1px solid var(--line);padding:10px 0}.src small{color:var(--mu);display:block}
+.auth{max-width:380px;margin:30px auto;display:grid;gap:10px}.auth form{display:grid}
+.mvg{display:grid;grid-template-columns:1fr;gap:12px}@media(min-width:700px),(orientation:landscape){.mvg{grid-template-columns:1fr 1fr}}
+.mvp video{width:100%;aspect-ratio:16/9;max-height:45vh;background:#000;border-radius:12px}.mvp.empty{border:1px dashed var(--line);border-radius:12px;padding:30px;text-align:center}.mvb{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px}
+.wm{position:absolute;top:6px;right:6px;background:var(--ac);color:#04201c;border-radius:50%;width:22px;height:22px;display:grid;place-items:center;font-size:13px}
+</style></head><body>
+<header><a class="brand" href="#/" id="bn"></a><nav id="nav"></nav></header>
+<main id="app"></main>
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.5.17/hls.min.js"></script>
+<script>
+const C=window.APP_CONFIG||{},NAME=C.APP_NAME||'Lumo',sb=!!(C.SUPABASE_URL&&C.SUPABASE_ANON_KEY);
+const $=s=>document.querySelector(s),app=$('#app');
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const CINE='https://v3-cinemeta.strem.io/manifest.json';
+const store={get(k,d){try{return JSON.parse(localStorage.getItem(k))??d}catch{return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch{}}};
+const AU=(()=>{try{return JSON.parse(localStorage.getItem('au'))||{g:1,w:false}}catch{return{g:1,w:false}}})();
+let MV=(()=>{try{const m=JSON.parse(localStorage.getItem('mv'));return Array.isArray(m)&&m.length===2?m:[null,null]}catch{return[null,null]}})();
+const S={user:null,token:null,urls:store.get('urls',[CINE]),addons:[],lib:store.get('lib',[]),hist:store.get('hist',[]),pref:store.get('pref',''),links:store.get('links',{}),rate:store.get('rate',{}),seen:store.get('seen',{}),hw:store.get('hw',false),gc:store.get('gc',{}),cols:store.get('cols',{}),cb:store.get('cb',[]),show:store.get('show',[]),prof:store.get('prof',{n:'',b:'',a:'🎬'})};
+const APPLE=/iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent)&&!!document.createElement('video').canPlayType('application/vnd.apple.mpegurl');let CUR=null,nxT=null,AC=null,SUBS=[],OWN=[],DBG=[],SID='',MVH=[],MVR=[],MVSLOT=0,SRAW='',SDOFF=0,REC={k:'',h:''},PARTY=null,SBC=null,BR=+(()=>{try{return localStorage.getItem('br')}catch{return 1}})()||1;
+document.title=NAME;$('#bn').textContent=NAME.toUpperCase();
+const base=u=>u.replace(/\/manifest\.json.*$/,'').replace(/\/$/,'');
+const norm=u=>{u=u.trim().replace(/^stremio:\/\//,'https://');if(!/^https?:\/\//.test(u))u='https://'+u;return /manifest\.json/.test(u)?u:u.replace(/\/$/,'')+'/manifest.json'};
+async function J(u,ms=10000){const c=new AbortController(),t=setTimeout(()=>c.abort(),ms);try{const r=await fetch(u,{signal:c.signal});if(!r.ok)throw new Error(r.status);return await r.json()}finally{clearTimeout(t)}}
+const why=(e,u)=>/^http:/i.test(u)?'The link starts with http, which browsers block on this https site.':e.name==='AbortError'?'Timed out. The addon may be asleep, so try Retry in a minute.':(e.message==='bad'||e.name==='SyntaxError')?'That link is not a valid addon manifest.':/^\d+$/.test(e.message)?'The addon returned error '+e.message+'.':'Blocked by the browser. This addon does not allow web apps to read it (CORS).';
+async function loadAddons(){S.fail={};const r=await Promise.allSettled(S.urls.map(async u=>{try{const m=await J(u,20000);if(!m||typeof m!=='object'||!(m.id||m.name))throw new Error('bad');return{url:u,base:base(u),m}}catch(e){S.fail[u]=why(e,u);throw e}}));S.addons=r.filter(x=>x.status==='fulfilled').map(x=>x.value)}
+function has(a,res,type,id){const m=a.m;return(m.resources||[]).some(r=>{const o=typeof r==='object',n=o?r.name:r;if(n!==res)return false;const t=(o&&r.types)||m.types||[],p=(o&&r.idPrefixes)||m.idPrefixes;return(!type||!t.length||t.includes(type))&&(!p||!id||p.some(x=>id.startsWith(x)))})}
+const cx=c=>c.extra||(c.extraSupported||[]).map(n=>({name:n,isRequired:(c.extraRequired||[]).includes(n)}));
+const reqG=c=>{const g=cx(c).find(e=>e.name==='genre'&&e.isRequired&&(e.options||[]).length);return g?g.options:null};
+const reqO=c=>cx(c).filter(e=>e.isRequired&&e.name!=='genre'&&(e.options||[]).length).map(e=>e.name+'='+encodeURIComponent(e.options[0]));
+const browsable=c=>cx(c).filter(e=>e.isRequired).every(e=>(e.options||[]).length&&e.name!=='search'),searchable=c=>cx(c).some(e=>e.name==='search');
+const vlc=(u,sb)=>{const m=String(u).match(/^(https?):\/\/(.*)$/);return m?`intent://${m[2]}#Intent;scheme=${m[1]};package=org.videolan.vlc;type=video/*${sb?';S.subtitles_location='+encodeURIComponent(sb):''};end`:u};
+const cards=(ms,t)=>ms.map(m=>`<a class="card" href="#/item/${esc(m.type||t)}/${encodeURIComponent(m.id)}"><img loading="lazy" src="${esc(m.poster||'')}" alt="">${isSeen(m.type||t,m.id)?'<b class="wm">✓</b>':''}<span>${esc(m.name)}</span></a>`).join('');
+// Supabase auth (email + password). Addon list is saved in the account's user metadata.
+async function sbf(p,o={}){const r=await fetch(C.SUPABASE_URL+p,{...o,headers:{apikey:C.SUPABASE_ANON_KEY,'Content-Type':'application/json',...(S.token?{Authorization:'Bearer '+S.token}:{})}});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.msg||j.error_description||j.message||'Request failed');return j}
+function applyMeta(md){if(Array.isArray(md.addons)&&md.addons.length){S.urls=md.addons;store.set('urls',S.urls)}if(Array.isArray(md.lib)){S.lib=md.lib;store.set('lib',S.lib)}if(Array.isArray(md.hist)){S.hist=md.hist;store.set('hist',S.hist)}if(typeof md.pref==='string'){S.pref=md.pref;store.set('pref',S.pref)}if(md.prof&&typeof md.prof==='object'){S.prof=md.prof;store.set('prof',S.prof)}}
+function setSession(j){S.token=j.access_token;S.user=j.user;store.set('sess',{a:j.access_token,r:j.refresh_token});const md=(j.user&&j.user.user_metadata)||{};applyMeta(md);if(!(md.addons&&md.addons.length))saveUrls()}
+async function saveUrls(){store.set('urls',S.urls);store.set('lib',S.lib);store.set('hist',S.hist);store.set('pref',S.pref);store.set('prof',S.prof);if(S.token)try{await sbf('/auth/v1/user',{method:'PUT',body:JSON.stringify({data:{addons:S.urls,lib:S.lib,hist:S.hist,pref:S.pref,prof:S.prof}})})}catch{}}
+async function restore(){const s=store.get('sess');if(!sb||!s)return;try{S.token=s.a;const u=await sbf('/auth/v1/user');S.user=u;applyMeta(u.user_metadata||{})}catch{try{S.token=null;setSession(await sbf('/auth/v1/token?grant_type=refresh_token',{method:'POST',body:JSON.stringify({refresh_token:s.r})}))}catch{S.token=S.user=null;store.set('sess',null)}}}
+// Screens
+const mine=()=>(S.hist.length?`<h2>Continue Watching</h2><div class="row">${cards(S.hist.map(x=>({...x,name:x.name+(x.label?' · '+x.label:'')})))}</div>`:'')+(S.lib.length?`<h2>My Library</h2><div class="row">${cards(S.lib)}</div>`:'');
+const warn=()=>S.addons.length<S.urls.length?`<p class="err">${S.urls.length-S.addons.length} addon(s) did not load. <a href="#/addons" style="color:inherit">See why</a></p>`:'';
+let HM=[];
+const catsAll=()=>{const o=[];S.addons.forEach(a=>(a.m.catalogs||[]).filter(browsable).forEach(c=>o.push({a,c})));return o};
+const goItem=(m,t)=>{if(m)location.hash='#/item/'+(m.type||t)+'/'+encodeURIComponent(m.id)};
+const pick=l=>l[Math.floor(Math.random()*l.length)];
+async function home(){
+ HM=[];const js=catsAll().slice(0,150);
+ if(!js.length){app.innerHTML=mine()+warn()+'<p class="muted">No catalogs yet. Addons that only provide sources or subtitles have no home rows. Add one with catalogs on the Discover page.</p>';return}
+ app.innerHTML=mine()+warn()+'<div id="rec"></div>'+tpHtml()+js.map((j,i)=>`<h2>${esc(j.c.name||j.c.id)}<small>${esc(j.a.m.name)}</small><a href="#" data-sa="${i}" style="font-size:12px;color:var(--ac);font-weight:400;margin-left:10px">See all ›</a></h2><div class="row" id="r${i}" data-i="${i}"><p class="muted">Loading…</p></div>`).join('');
+ app.onclick=e=>{const sa=e.target.closest('[data-sa]');
+  if(sa){e.preventDefault();const j=js[+sa.dataset.sa];D.t=j.c.type;D.ci=Math.max(0,catsAll().filter(x=>x.c.type===j.c.type).findIndex(x=>x.a===j.a&&x.c===j.c));D.g='';location.hash='#/discover';return}
+  if(e.target.closest('#rnd')){tonight();return}if(e.target.id==='hw'){S.hw=e.target.checked;store.set('hw',S.hw);home()}};
+ const ld=async i=>{const j=js[i];let h;try{const d=await J(`${j.a.base}/catalog/${j.c.type}/${encodeURIComponent(j.c.id)}${(x=>x?'/'+x:'')([reqG(j.c)&&'genre='+encodeURIComponent(reqG(j.c)[0]),...reqO(j.c)].filter(Boolean).join('&'))}.json`,25000);const ms=vis(d.metas||[],j.c.type);ms.forEach(m=>HM.push({...m,type:m.type||j.c.type}));h=cards(ms,j.c.type)||'<p class="muted">Nothing here</p>'}catch{h='<p class="muted">This addon did not respond</p>'}const el=$('#r'+i);if(el)el.innerHTML=h};
+ const io='IntersectionObserver'in window?new IntersectionObserver(es=>es.forEach(en=>{if(en.isIntersecting){io.unobserve(en.target);ld(+en.target.dataset.i)}}),{rootMargin:'400px'}):null;
+ js.forEach((j,i)=>{const el=$('#r'+i);io?io.observe(el):ld(i)});loadRec()}
+async function search(q){
+ app.innerHTML=`<form id="sf"><input id="q" value="${esc(q)}" placeholder="Search movies and shows"><button>Search</button></form><div id="res" class="grid" style="margin-top:16px"></div>`;
+ $('#sf').onsubmit=e=>{e.preventDefault();location.hash='#/search/'+encodeURIComponent($('#q').value.trim())};
+ if(!q)return;$('#res').innerHTML='<p class="muted">Searching…</p>';
+ const jobs=[];S.addons.forEach(a=>(a.m.catalogs||[]).filter(searchable).forEach(c=>jobs.push({a,c})));
+ const seen=new Set(),out=[];
+ await Promise.allSettled(jobs.slice(0,10).map(async j=>{const d=await J(`${j.a.base}/catalog/${j.c.type}/${encodeURIComponent(j.c.id)}/search=${encodeURIComponent(q)}.json`);(d.metas||[]).forEach(m=>{const k=m.type+m.id;if(!seen.has(k)){seen.add(k);out.push(m)}})}));
+ const el=$('#res');if(el)el.innerHTML=out.length?cards(out):'<p class="muted">No results. Make sure you have an addon with search, like Cinemeta.</p>'}
+async function item(type,id){
+ app.innerHTML='<p class="muted">Loading…</p>';let meta=null;
+ for(const a of S.addons.filter(a=>has(a,'meta',type,id))){try{const d=await J(`${a.base}/meta/${type}/${encodeURI(id)}.json`);if(d.meta){meta=d.meta;break}}catch{}}
+ meta=meta||{id,type,name:id};CUR={meta,type,id,vid:null,label:''};const yt=((meta.trailerStreams||[])[0]||{}).ytId||((meta.trailers||[])[0]||{}).source||'';
+ const vids=(meta.videos||[]).filter(v=>v.season!=null||v.episode!=null||v.id),seasons=[...new Set(vids.map(v=>v.season??0))].sort((a,b)=>a-b);
+ app.innerHTML=`<div class="hero" style="background-image:linear-gradient(#0b0f1488,#0b0f14),url('${esc(meta.background||meta.poster||'')}')"><h1>${esc(meta.name)}</h1><p class="muted">${esc([meta.year||meta.releaseInfo,meta.runtime,(meta.genres||[]).join(', ')].filter(Boolean).join(' · '))}</p><p>${esc(meta.description||'')}</p><p><button class="ghost" id="lb"></button> <button class="ghost" id="up">👍</button> <button class="ghost" id="dn">👎</button> <button class="ghost" id="wb"></button> <button class="ghost" id="wp">👥 Watch party</button> <select id="colsel"></select> ${yt?'<button class="ghost" id="tb">▶ Trailer</button>':''}</p></div><div id="tr"></div><div id="again"></div>
+ <video id="pl" controls playsinline hidden></video><div id="pty" style="margin:8px 0"></div><div id="nx" class="muted" style="margin:8px 0"></div><div id="snd" class="muted" style="margin:6px 0" hidden>🔊 Browser player sound: <select id="gsel"><option value="1">Volume 100%</option><option value="1.5">150%</option><option value="2">200%</option><option value="3">300%</option></select> <label><input type="checkbox" id="wsel"> Wide sound</label> <button class="ghost" id="cast" hidden>📺 AirPlay / Cast</button><div style="margin-top:6px">☀ Brightness <input type="range" id="brt" min="0.5" max="2" step="0.1" style="width:140px;vertical-align:middle"></div><div id="sdl" style="margin-top:6px">⏱ Subtitles: <button class="ghost" data-sd="-2">−2s</button> <button class="ghost" data-sd="-0.5">−0.5</button> <b id="sdv">0.0s</b> <button class="ghost" data-sd="0.5">+0.5</button> <button class="ghost" data-sd="2">+2s</button> <button class="ghost" data-sd="0">Reset</button><br><small>Minus shows subtitles earlier, plus shows them later.</small></div><div id="sn"></div></div><select id="sub" hidden></select><p id="pe" class="err" hidden></p><label id="apl" class="muted" hidden style="display:block;margin:8px 0"><input type="checkbox" id="apc"> Autoplay next episode (browser playback only)</label><button class="ghost" id="we" hidden style="margin:6px 0">✓ Mark selected episode watched</button><div id="eps"></div><div id="st"></div><div id="more"></div>`;
+ $('#pl').onended=nextEp;
+ const gs=$('#gsel'),ws=$('#wsel');gs.value=String(AU.g);ws.checked=!!AU.w;
+ const br=$('#brt'),brf=()=>BR!==1?`brightness(${BR})`:'';br.value=BR;br.oninput=()=>{BR=+br.value;try{localStorage.setItem('br',BR)}catch{}document.querySelectorAll('video').forEach(x=>x.style.filter=brf())};
+ const sdv=$('#sdv'),upd=()=>{sdv.textContent=(SDOFF>0?'+':'')+SDOFF.toFixed(1)+'s'};SDOFF=0;upd();
+ $('#sdl').onclick=e=>{const b=e.target.closest('[data-sd]');if(!b)return;const d=+b.dataset.sd;SDOFF=d===0?0:Math.round((SDOFF+d)*10)/10;upd();const v=$('#pl');if(v&&SRAW)paintSub(v)};
+ moreLike(meta,type,id);
+ $('#cast').onclick=()=>{const v=$('#pl');if(v.webkitShowPlaybackTargetPicker)v.webkitShowPlaybackTargetPicker();else if(v.remote&&v.remote.prompt)v.remote.prompt().catch(()=>{})};
+ gs.onchange=ws.onchange=()=>{AU.g=+gs.value;AU.w=ws.checked;try{localStorage.setItem('au',JSON.stringify(AU))}catch{}const v=$('#pl');if(CUR.playing&&!v.hidden)playUrl(CUR.playing,v.currentTime||0)};
+ const lk=S.links[type+':'+id];
+ if(lk&&lk.src){$('#again').innerHTML=`<p><button id="ag">↻ Play again with the same link</button> <a class="btn" style="background:#f28c1a" href="${esc(vlc(lk.src))}">VLC</a> <button class="ghost" id="ac">Copy link</button><br><small class="muted">${esc(lk.an||'')}${lk.label?' · '+esc(lk.label):''}</small></p>`;
+  $('#ag').onclick=()=>{CUR.src=lk.src;CUR.an=lk.an;if(lk.vid){CUR.vid=lk.vid;CUR.label=lk.label||'';const ev=vids.find(x=>x.id===lk.vid);if(ev&&CUR.draw){CUR.draw(ev.season??0);const eb=[...document.querySelectorAll('#eps [data-v]')].find(x=>x.dataset.v===lk.vid);if(eb)eb.classList.add('on')}}mark();playUrl(lk.src)};
+  $('#ac').onclick=e=>{try{navigator.clipboard.writeText(lk.src);e.target.textContent='Copied'}catch{}}}
+CUR.vids=[...vids].sort((a,b)=>(a.season??0)-(b.season??0)||(a.episode??0)-(b.episode??0));if($('#tb'))$('#tb').onclick=()=>showTrailer(yt);
+ const lb=$('#lb'),inLib=()=>S.lib.some(x=>x.id===id&&x.type===type),lbt=()=>{lb.textContent=inLib()?'✓ In Library (tap to remove)':'+ Add to Library'};lbt();
+ lb.onclick=()=>{S.lib=inLib()?S.lib.filter(x=>!(x.id===id&&x.type===type)):[{id,type,name:meta.name,poster:meta.poster||''},...S.lib].slice(0,200);saveUrls();lbt()};
+ $('#wp').onclick=()=>{const el=$('#pty');if(!sb||!window.supabase){el.innerHTML='<p class="err">Watch parties need account sign-in to be set up, and an internet connection.</p>';return}
+  if(!PARTY||PARTY.type!==type||PARTY.id!==id){const c='ABCDEFGHJKMNPQRSTUVWXYZ23456789';let code='';for(let i=0;i<5;i++)code+=c[Math.floor(Math.random()*c.length)];startParty(code,type,id);store.set('pf',1)}
+  partyUI()};
+ if(PARTY&&PARTY.type===type&&PARTY.id===id)partyUI();
+ const cs=$('#colsel'),fillCs=()=>{cs.innerHTML='<option value="">＋ Collection</option>'+Object.keys(S.cols).map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join('')+'<option value="__new">＋ New collection…</option>'};fillCs();
+ cs.onchange=()=>{let n=cs.value;if(!n)return;if(n==='__new'){n=(prompt('Collection name')||'').trim().replace(/[|:]/g,'');if(!n){fillCs();return}if(!S.cols[n])S.cols[n]=[]}
+  if(!S.cols[n].some(x=>x.type===type&&x.id===id))S.cols[n].push({type,id,name:meta.name,poster:meta.poster||''});store.set('cols',S.cols);fillCs();cs.options[0].textContent='Added to '+n+' ✓'};
+ const k0=key(type,id),ub=$('#up'),db=$('#dn'),wb=$('#wb'),gnr=meta.genres||meta.genre||[];
+ if(gnr.length){S.gc[k0]=gnr;store.set('gc',S.gc)}
+ const rf=()=>{ub.textContent=S.rate[k0]===1?'👍 Liked':'👍';db.textContent=S.rate[k0]===-1?'👎 Hidden':'👎';ub.className=S.rate[k0]===1?'':'ghost';db.className=S.rate[k0]===-1?'':'ghost'};rf();
+ ub.onclick=()=>{if(S.rate[k0]===1)delete S.rate[k0];else S.rate[k0]=1;saveRS();rf()};
+ db.onclick=()=>{if(S.rate[k0]===-1)delete S.rate[k0];else S.rate[k0]=-1;saveRS();rf()};
+ const wf=()=>{wb.textContent=S.seen[k0]?'✓ Watched (tap to undo)':(type==='series'?'✓ Mark series watched':'✓ Mark watched')};wf();
+ wb.onclick=()=>{if(S.seen[k0])delete S.seen[k0];else S.seen[k0]=1;saveRS();wf()};
+ if(type==='series'&&vids.length){
+  const draw=s=>{$('#eps').innerHTML=`<select id="ss">${seasons.map(x=>`<option value="${x}" ${x===s?'selected':''}>Season ${x}</option>`).join('')}</select><div class="eps">${vids.filter(v=>(v.season??0)===s).map(v=>`<button data-v="${esc(v.id)}" data-l="S${v.season??0}E${v.episode??''}">${S.seen['ep:'+v.id]?'✓ ':''}${esc(v.episode??'')}${v.title||v.name?' · '+esc(v.title||v.name):''}</button>`).join('')}</div>`;
+   $('#ss').onchange=e=>draw(+e.target.value);
+   $('#eps').onclick=e=>{const b=e.target.closest('[data-v]');if(!b)return;$('#eps').querySelectorAll('button').forEach(x=>x.classList.remove('on'));b.classList.add('on');CUR.vid=b.dataset.v;CUR.label=b.dataset.l;streams(type,b.dataset.v)}};
+  CUR.draw=draw;$('#apl').hidden=false;$('#we').hidden=false;$('#we').onclick=()=>{if(!CUR.vid)return;const k='ep:'+CUR.vid;if(S.seen[k])delete S.seen[k];else S.seen[k]=1;saveRS();const ev=vids.find(x=>x.id===CUR.vid);if(ev){CUR.draw(ev.season??0);const eb=[...document.querySelectorAll('#eps [data-v]')].find(x=>x.dataset.v===CUR.vid);if(eb)eb.classList.add('on')}};$('#apc').checked=store.get('ap',true);$('#apc').onchange=e=>store.set('ap',e.target.checked);draw(seasons.includes(1)?1:seasons[0])}
+ else streams(type,id)}
+async function streams(type,id,auto){
+ const el=$('#st');el.innerHTML='<p class="muted">Finding sources…</p>';const list=[];SUBS=[];OWN=[];const im=CUR&&CUR.meta&&(CUR.meta.imdb_id||CUR.meta.imdbId),sid=type==='movie'&&!/^tt/.test(id)&&im?String(im).replace(/^imdb:/,''):id;SID=sid;getSubs(type,sid).then(fillSubs);
+ await Promise.allSettled(S.addons.filter(a=>has(a,'stream',type,id)).map(async a=>{const d=await J(`${a.base}/stream/${type}/${encodeURI(id)}.json`);(d.streams||[]).forEach(s=>list.push({a,s}))}));
+ if(!list.length){el.innerHTML='<p class="muted">No sources found. Add a stream addon on the Addons page.</p>';return}
+ OWN=list.flatMap(x=>x.s.subtitles||[]);fillSubs();$('#snd').hidden=false;
+ if(S.pref)list.sort((x,y)=>(y.a.url===S.pref)-(x.a.url===S.pref));
+ el.innerHTML='<h2>Sources</h2>'+list.map((x,i)=>{const s=x.s;let b='<small>Torrent: not playable in a browser</small>';
+  if(s.url&&/^https?:/.test(s.url))b=`<div><button data-i="${i}">Play</button> <button class="ghost" data-mv="${i}">＋ Multi</button> <a class="btn" style="background:#f28c1a" data-x="${i}" data-u="${esc(s.url)}" href="${esc(vlc(s.url))}">VLC</a>${s.behaviorHints&&s.behaviorHints.notWebReady?'<small>May not play in a browser</small>':''}</div>`;else if(s.externalUrl)b=`<a class="btn" target="_blank" rel="noopener" href="${esc(s.externalUrl)}">Open</a>`;else if(s.ytId)b=`<button data-y="${esc(s.ytId)}">▶ Watch</button>`;
+  return `<div class="src"><div>${esc((s.name||'')+' '+(s.title||s.description||'')).slice(0,160)}<small>${esc(x.a.m.name)} · <a href="#" data-pf="${esc(x.a.url)}" style="color:var(--ac)">${x.a.url===S.pref?'★ Preferred (tap to clear)':'☆ Prefer this addon'}</a></small></div>${b}</div>`}).join('');
+ el.onclick=e=>{const yb=e.target.closest('[data-y]');if(yb){showTrailer(yb.dataset.y);return}const pf=e.target.closest('[data-pf]');if(pf){e.preventDefault();S.pref=S.pref===pf.dataset.pf?'':pf.dataset.pf;saveUrls();streams(type,id);return}const mvb=e.target.closest('[data-mv]');if(mvb){const x=list[+mvb.dataset.mv];addMV({url:x.s.url,name:(CUR.meta.name||'')+(CUR.label?' · '+CUR.label:'')});mvb.textContent='Added ✓';return}
+  const bx=e.target.closest('[data-i],[data-x]');if(bx){const x=list[bx.dataset.i??bx.dataset.x];CUR.src=x.s.url;CUR.an=x.a.m.name;CUR.lastAddon=x.a.url}
+  if(e.target.closest('button,a'))mark();const b=e.target.closest('[data-i]');if(!b)return;playUrl(list[b.dataset.i].s.url)};
+ if(auto){const ok=x=>x.s.url&&/^https?:/.test(x.s.url),pref=list.findIndex(x=>ok(x)&&x.a.url===(S.pref||CUR.lastAddon)),any=list.findIndex(ok),k=pref>=0?pref:any,bt=k>=0&&el.querySelector(`[data-i="${k}"]`);if(bt)bt.click()}}
+function playUrl(u,t0,nb){
+ let v=$('#pl');const pe=$('#pe');if(!nb)pe.hidden=true;CUR.playing=u;
+ if(window._hls){window._hls.destroy();window._hls=null}
+ try{if(AC)AC.close()}catch{}AC=null;
+ const hls=/\.m3u8(\?|$)/i.test(u)&&window.Hls&&Hls.isSupported()&&!APPLE,boost=!nb&&(AU.g>1||AU.w);
+ const nv=document.createElement('video');nv.id='pl';nv.controls=true;nv.setAttribute('playsinline','');nv.onended=nextEp;if(boost&&!hls)nv.crossOrigin='anonymous';
+ if(BR!==1)nv.style.filter=`brightness(${BR})`;
+ nv.setAttribute('x-webkit-airplay','allow');v.replaceWith(nv);v=nv;partyHook(v);const cb=$('#cast');if(cb)cb.hidden=!('webkitShowPlaybackTargetPicker' in nv||nv.remote);
+ const fail=()=>{pe.innerHTML=`This source couldn't play in the browser. Some formats (MKV, HEVC) or protected links need an external player. <a class="btn" style="background:#f28c1a" href="${esc(vlc(u))}">Open in VLC</a> <a class="btn" href="${esc(u)}" target="_blank" rel="noopener">Open link</a> <button class="ghost" id="cp">Copy link</button>`;pe.hidden=false;$('#cp').onclick=()=>{try{navigator.clipboard.writeText(u)}catch{}}};
+ v.onerror=()=>{if(boost&&!hls){pe.textContent='This source does not allow volume boost, so it is playing normally.';pe.hidden=false;playUrl(u,v.currentTime||t0,true);return}fail()};
+ if(boost)v.addEventListener('loadeddata',()=>buildAudio(v,u),{once:true});
+ if(hls){window._hls=new Hls();window._hls.loadSource(u);window._hls.attachMedia(v);window._hls.on(Hls.Events.ERROR,(_,d)=>{if(d.fatal)fail()})}else v.src=u;
+ if(t0)v.addEventListener('loadedmetadata',()=>{try{v.currentTime=t0}catch{}},{once:true});
+ const sv=$('#sub');if(sv&&sv.value)setSub(v,sv.value);
+ v.play().catch(()=>{});v.scrollIntoView({behavior:'smooth'})}
+function buildAudio(v,u){const back=m=>{const pe=$('#pe');pe.textContent=m;pe.hidden=false;playUrl(u,v.currentTime||0,true)};
+ try{const ctx=new(window.AudioContext||window.webkitAudioContext)();AC=ctx;
+  const src=ctx.createMediaElementSource(v),g=ctx.createGain(),comp=ctx.createDynamicsCompressor();g.gain.value=AU.g;
+  comp.threshold.value=-14;comp.knee.value=12;comp.ratio.value=8;comp.attack.value=.003;comp.release.value=.25;
+  let out=src;
+  if(AU.w){const spl=ctx.createChannelSplitter(2),mrg=ctx.createChannelMerger(2),mid=ctx.createGain(),sl=ctx.createGain(),sr=ctx.createGain(),ss=ctx.createGain(),ng=ctx.createGain();
+   mid.gain.value=.5;sl.gain.value=.9;sr.gain.value=-.9;ng.gain.value=-1;
+   src.connect(spl);spl.connect(mid,0);spl.connect(mid,1);spl.connect(sl,0);spl.connect(sr,1);sl.connect(ss);sr.connect(ss);
+   mid.connect(mrg,0,0);ss.connect(mrg,0,0);mid.connect(mrg,0,1);ss.connect(ng);ng.connect(mrg,0,1);out=mrg}
+  out.connect(g);g.connect(comp);comp.connect(ctx.destination);if(ctx.resume)ctx.resume();
+  setTimeout(()=>{if(AC===ctx&&ctx.state!=='running')back('Your browser blocked the sound boost, so it is playing normally.')},900)}
+ catch{back('Sound boost is not available in this browser.')}}
+function showTrailer(id){if(!/^[\w-]{6,15}$/.test(id))return;const b=$('#tr');
+ b.innerHTML=`<div style="aspect-ratio:16/9;margin:10px 0"><iframe style="width:100%;height:100%;border:0;border-radius:12px" src="https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0" allow="autoplay; fullscreen; encrypted-media" allowfullscreen></iframe></div><p><a href="https://www.youtube.com/watch?v=${id}" target="_blank" rel="noopener">Open on YouTube</a> · <a href="#" id="tx">Close</a></p>`;
+ $('#tx').onclick=e=>{e.preventDefault();b.innerHTML=''};b.scrollIntoView({behavior:'smooth'})}
+function nextEp(){clearInterval(nxT);const nb=$('#nx');const mk=CUR&&(CUR.type==='series'&&CUR.vid?'ep:'+CUR.vid:key(CUR.type,CUR.id));if(mk){S.seen[mk]=1;saveRS()}if(!CUR||!CUR.vids||!CUR.vid||!nb||!store.get('ap',true))return;
+ const i=CUR.vids.findIndex(v=>v.id===CUR.vid),n=CUR.vids[i+1];if(i<0||!n)return;
+ const lbl=`S${n.season??0}E${n.episode??''}`;let t=5;
+ const go=()=>{clearInterval(nxT);nb.innerHTML='';CUR.vid=n.id;CUR.label=lbl;if(CUR.draw)CUR.draw(n.season??0);const b=[...document.querySelectorAll('#eps [data-v]')].find(x=>x.dataset.v===n.id);if(b)b.classList.add('on');streams(CUR.type,n.id,true)};
+ const show=()=>{nb.innerHTML=`Next episode ${lbl} in ${t}s <button id="nxg">Play now</button> <button class="ghost" id="nxc">Cancel</button>`;$('#nxg').onclick=go;$('#nxc').onclick=()=>{clearInterval(nxT);nb.innerHTML=''}};
+ show();nxT=setInterval(()=>{t--;if(t<=0)go();else show()},1000)}
+function addMV(s){MV[MV[0]?1:0]=s;store.set('mv',MV);nav()}
+function attachMV(v,u,i){v.onerror=()=>{const p=v.closest('.mvp');if(p)p.insertAdjacentHTML('beforeend','<p class="err">This source can\'t play in the browser.</p>')};
+ if(/\.m3u8(\?|$)/i.test(u)&&window.Hls&&Hls.isSupported()){const x=new Hls();x.loadSource(u);x.attachMedia(v);MVH[i]=x}else v.src=u;
+ v.play().catch(()=>{})}
+async function mvMeta(type,id){for(const a of S.addons.filter(a=>has(a,'meta',type,id))){try{const d=await J(`${a.base}/meta/${type}/${encodeURI(id)}.json`);if(d.meta)return d.meta}catch{}}return{id,type,name:id}}
+async function mvSources(slot,type,id,title){const box=$('#mvpk');box.innerHTML='<p class="muted">Finding sources…</p>';const list=[];
+ await Promise.allSettled(S.addons.filter(a=>has(a,'stream',type,id)).map(async a=>{const d=await J(`${a.base}/stream/${type}/${encodeURI(id)}.json`);(d.streams||[]).forEach(s=>{if(s.url&&/^https?:/.test(s.url))list.push({a,s})})}));
+ box.innerHTML=`<h2>${esc(title)}</h2>`+(list.length?list.map((x,i)=>`<div class="src"><div>${esc(((x.s.name||'')+' '+(x.s.title||x.s.description||'')).slice(0,160))}<small>${esc(x.a.m.name)}</small></div><button data-pk="${i}">Use</button></div>`).join(''):'<p class="muted">No browser-playable sources for this one.</p>');
+ box.onclick=e=>{const b=e.target.closest('[data-pk]');if(!b)return;const x=list[+b.dataset.pk];MV[slot]={url:x.s.url,name:title};store.set('mv',MV);nav();multi()}}
+async function mvPick(slot,m){if(!m)return;const box=$('#mvpk');box.innerHTML='<p class="muted">Loading…</p>';box.scrollIntoView({behavior:'smooth'});const meta=await mvMeta(m.type,m.id),type=m.type;
+ const vids=(meta.videos||[]).filter(v=>v.id).sort((a,b)=>(a.season??0)-(b.season??0)||(a.episode??0)-(b.episode??0));
+ if(type==='series'&&vids.length){const seasons=[...new Set(vids.map(v=>v.season??0))].sort((a,b)=>a-b);
+  const draw=s=>{box.innerHTML=`<h2>${esc(meta.name)}</h2><select id="mvse">${seasons.map(x=>`<option value="${x}" ${x===s?'selected':''}>Season ${x}</option>`).join('')}</select><div class="eps">${vids.filter(v=>(v.season??0)===s).map(v=>`<button data-ev="${esc(v.id)}" data-l="S${v.season??0}E${v.episode??''}">${esc(v.episode??'')}</button>`).join('')}</div>`;
+   $('#mvse').onchange=e=>draw(+e.target.value);box.onclick=e=>{const b=e.target.closest('[data-ev]');if(b)mvSources(slot,type,b.dataset.ev,meta.name+' · '+b.dataset.l)}};
+  draw(seasons.includes(1)?1:seasons[0]);return}
+ mvSources(slot,type,m.id,meta.name||m.name)}
+function mvShow(){const r=$('#mvr');if(!r)return;r.innerHTML=MVR.length?MVR.map((m,i)=>`<div class="card" style="cursor:pointer" data-pt="${i}"><img loading="lazy" src="${esc(m.poster||'')}" alt=""><span>${esc(m.name)}</span></div>`).join(''):'<p class="muted">Nothing to show.</p>'}
+async function mvSearch(q){const r=$('#mvr');r.innerHTML='<p class="muted">Searching…</p>';const jobs=[];S.addons.forEach(a=>(a.m.catalogs||[]).filter(searchable).forEach(c=>jobs.push({a,c})));const seen=new Set(),out=[];
+ await Promise.allSettled(jobs.slice(0,10).map(async j=>{const d=await J(`${j.a.base}/catalog/${j.c.type}/${encodeURIComponent(j.c.id)}/search=${encodeURIComponent(q)}.json`);(d.metas||[]).forEach(m=>{const k=m.type+m.id;if(!seen.has(k)){seen.add(k);out.push({...m,type:m.type||j.c.type})}})}));
+ MVR=out;mvShow()}
+function mvPicker(slot){MVSLOT=slot;MVR=[];const el=$('#mvpick');
+ el.innerHTML=`<h2>Add a video to Slot ${'AB'[slot]}</h2><form id="mvf"><input id="mvq" placeholder="Search a movie or show"><button>Search</button></form><div class="eps"><button class="ghost" data-src="lib">My Library</button><button class="ghost" data-src="hist">Continue Watching</button></div><div id="mvr" class="row"></div><div id="mvpk"></div>`;
+ $('#mvf').onsubmit=e=>{e.preventDefault();const q=$('#mvq').value.trim();if(q)mvSearch(q)};el.scrollIntoView({behavior:'smooth'})}
+function multi(){
+ const first=MV.findIndex(Boolean);
+ app.innerHTML=`<h2>Multi-view</h2><p class="muted">Watch two videos at once. Only one plays sound at a time: tap 🔊 to switch. Tap a slot to pick a video, or use <b>＋ Multi</b> on a title's sources. Only sources that play in the browser work here.</p><div class="mvg">${MV.map((s,i)=>s?`<div class="mvp"><video id="mv${i}" controls playsinline></video><div class="mvb"><b>${esc(s.name)}</b> <button class="ghost" data-mu="${i}">🔊 Sound</button> <button class="ghost" data-fs="${i}">⛶</button> <button class="ghost" data-add="${i}">Change</button> <button class="ghost" data-rm="${i}">Remove</button></div></div>`:`<div class="mvp empty"><button data-add="${i}">＋ Add video to Slot ${'AB'[i]}</button><br><span class="muted">Search, or pick from your Library or Continue Watching.</span></div>`).join('')}</div><p><button class="ghost" id="mvs">⇄ Swap</button> <button class="ghost" id="mvc">Clear both</button></p><div id="mvpick"></div>`;
+ MV.forEach((s,i)=>{if(!s)return;const v=$('#mv'+i);v.muted=i!==first;if(BR!==1)v.style.filter=`brightness(${BR})`;attachMV(v,s.url,i)});
+ app.onclick=e=>{
+  const pt=e.target.closest('[data-pt]');if(pt){mvPick(MVSLOT,MVR[+pt.dataset.pt]);return}
+  const sr=e.target.closest('[data-src]');if(sr){MVR=(sr.dataset.src==='lib'?S.lib:S.hist).map(m=>({...m}));mvShow();return}
+  const ad=e.target.closest('[data-add]');if(ad){mvPicker(+ad.dataset.add);return}
+  const b=e.target.closest('[data-mu],[data-fs],[data-rm]');if(!b)return;
+  if(b.dataset.mu!=null){const i=+b.dataset.mu;MV.forEach((_,j)=>{const v=$('#mv'+j);if(v)v.muted=j!==i})}
+  else if(b.dataset.fs!=null){const v=$('#mv'+b.dataset.fs);if(v&&v.requestFullscreen)v.requestFullscreen()}
+  else{MV[+b.dataset.rm]=null;store.set('mv',MV);nav();multi()}};
+ $('#mvs').onclick=()=>{MV.reverse();store.set('mv',MV);multi()};
+ $('#mvc').onclick=()=>{MV=[null,null];store.set('mv',MV);nav();multi()}}
+const key=(t,id)=>t+':'+id,isSeen=(t,id)=>!!S.seen[key(t,id)],rated=(t,id)=>S.rate[key(t,id)]||0;
+function saveRS(){const ks=Object.keys(S.seen);if(ks.length>1500)ks.slice(0,ks.length-1500).forEach(k=>delete S.seen[k]);store.set('rate',S.rate);store.set('seen',S.seen);REC={k:'',h:''}}
+const vis=(ms,t)=>ms.filter(m=>{const ty=m.type||t;return!(S.hw&&isSeen(ty,m.id))&&rated(ty,m.id)>=0});
+const allGenres=()=>[...new Set(catsAll().flatMap(x=>{const g=cx(x.c).find(e=>e.name==='genre');return(g&&g.options)||[]}))].sort();
+const tpHtml=()=>{const ty=[...new Set(catsAll().map(x=>x.c.type))];return `<div class="ad" style="display:block"><b>🎲 Tonight's pick</b><div class="eps"><select id="tpt"><option value="">Any type</option>${ty.map(t=>`<option>${esc(t)}</option>`).join('')}</select><select id="tpg"><option value="">Any genre</option>${allGenres().map(g=>`<option>${esc(g)}</option>`).join('')}</select><button id="rnd">Pick for me</button></div><div id="tp"></div></div><p><label class="muted"><input type="checkbox" id="hw" ${S.hw?'checked':''}> Hide watched titles</label></p>`};
+async function recFor(type,genres,skip){const out=[],seen=new Set(skip);
+ for(const g of genres){const c=catsAll().find(x=>x.c.type===type&&cx(x.c).some(e=>e.name==='genre'&&(e.options||[]).includes(g)));if(!c)continue;
+  try{const d=await J(`${c.a.base}/catalog/${type}/${c.c.id}/genre=${encodeURIComponent(g)}.json`);(d.metas||[]).forEach(m=>{const k=type+m.id;if(!seen.has(k)&&!isSeen(type,m.id)&&rated(type,m.id)>=0){seen.add(k);out.push({...m,type:m.type||type})}})}catch{}}
+ return out.sort(()=>Math.random()-.5).slice(0,24)}
+async function gcOf(x){const k=key(x.type,x.id);if(S.gc[k])return S.gc[k];const m=await mvMeta(x.type,x.id),g=m.genres||m.genre||[];if(g.length){S.gc[k]=g;const ks=Object.keys(S.gc);if(ks.length>150)delete S.gc[ks[0]];store.set('gc',S.gc)}return g}
+async function tonight(){const box=$('#tp'),t=$('#tpt').value,g=$('#tpg').value;box.innerHTML='<p class="muted">Picking…</p>';let pool=[];
+ if(g){for(const ty of(t?[t]:[...new Set(catsAll().map(x=>x.c.type))]))pool.push(...await recFor(ty,[g],[]))}else pool=[...S.lib,...HM].filter(m=>!t||m.type===t);
+ pool=pool.filter(m=>!isSeen(m.type,m.id)&&rated(m.type,m.id)>=0);
+ if(!pool.length){box.innerHTML='<p class="muted">Nothing matches yet. Try other filters, or scroll Home so the rows can load.</p>';return}
+ const m=pick(pool);box.innerHTML=`<div class="row"><div class="card" style="flex:0 0 100px"><img src="${esc(m.poster||'')}" alt=""></div><div><b>${esc(m.name)}</b><br><span class="muted">${esc(m.releaseInfo||'')}</span><p><button data-open="${esc(m.type)}|${encodeURIComponent(m.id)}">Open</button> <button class="ghost" id="rnd2">Another</button></p></div></div>`;
+ box.onclick=ev=>{const o=ev.target.closest('[data-open]');if(o){const[ty,id]=o.dataset.open.split('|');location.hash='#/item/'+ty+'/'+id;return}if(ev.target.closest('#rnd2'))tonight()}}
+async function loadRec(){const el=$('#rec');if(!el)return;
+ const have=new Set(),uniq=l=>l.filter(x=>{const k=key(x.type,x.id);if(have.has(k))return false;have.add(k);return true});
+ const all=[...S.hist,...S.lib],nm=k=>(all.find(x=>key(x.type,x.id)===k)||{}).name||'';
+ const likes=Object.keys(S.rate).filter(k=>S.rate[k]===1).slice(-3).map(k=>{const i=k.indexOf(':');return{type:k.slice(0,i),id:k.slice(i+1),name:nm(k)}});
+ const pool=uniq([...likes,...all]).slice(0,8);if(!pool.length){el.innerHTML='';return}
+ const sig=pool.map(x=>x.id).join(',')+'|'+Object.keys(S.rate).length+'|'+Object.keys(S.seen).length+'|'+S.hw;
+ if(REC.k===sig&&REC.h){el.innerHTML=REC.h;return}
+ const gl=await Promise.all(pool.map(gcOf)),gw={},tc={};
+ pool.forEach((x,i)=>{const w=S.rate[key(x.type,x.id)]===1?3:1;(gl[i]||[]).forEach(g=>gw[g]=(gw[g]||0)+w);tc[x.type]=(tc[x.type]||0)+w});
+ Object.keys(S.rate).filter(k=>S.rate[k]===-1).forEach(k=>(S.gc[k]||[]).forEach(g=>{if(gw[g])gw[g]-=2}));
+ const genres=Object.keys(gw).filter(g=>gw[g]>0).sort((a,b)=>gw[b]-gw[a]).slice(0,3),type=Object.keys(tc).sort((a,b)=>tc[b]-tc[a])[0],used=pool.map(x=>x.type+x.id);let html='';
+ if(genres.length){const r=await recFor(type,genres,used);r.forEach(m=>used.push(m.type+m.id));if(r.length)html+=`<h2>Recommended for you<small>because you like ${esc(genres.slice(0,2).join(' & '))}</small></h2><div class="row">${cards(r,type)}</div>`}
+ for(const x of pool.filter(x=>x.name).slice(0,3)){const g=(await gcOf(x)).slice(0,2);if(!g.length)continue;const r=(await recFor(x.type,g,used)).slice(0,18);if(!r.length)continue;r.forEach(m=>used.push(m.type+m.id));
+  html+=`<h2>${S.rate[key(x.type,x.id)]===1?'Because you liked':'Because you watched'} ${esc(x.name)}</h2><div class="row">${cards(r,x.type)}</div>`}
+ REC={k:sig,h:html};const e2=$('#rec');if(e2)e2.innerHTML=html}
+async function moreLike(meta,type,id){const gs=(meta.genres||meta.genre||[]).slice(0,2);if(!gs.length)return;const r=await recFor(type,gs,[type+id]);const el=$('#more');if(el&&r.length)el.innerHTML=`<h2>More like this</h2><div class="row">${cards(r,type)}</div>`}
+function afterAuth(){const p=store.get('pend','');store.set('pend','');location.hash=p||'#/';nav()}
+const partyName=()=>S.user&&S.user.email?S.user.email.split('@')[0]:'Guest';
+function startParty(code,type,id){if(!sb||!window.supabase)return false;if(PARTY)leaveParty(true);
+ SBC=SBC||window.supabase.createClient(C.SUPABASE_URL,C.SUPABASE_ANON_KEY);
+ const ch=SBC.channel('lumo-party-'+code,{config:{broadcast:{self:false}}});PARTY={code,type,id,ch,n:1,msgs:[],last:null,ig:false,st:'connecting'};
+ ch.on('broadcast',{event:'p'},({payload})=>onParty(payload)).on('presence',{event:'sync'},()=>{if(PARTY){PARTY.n=Math.max(1,Object.keys(ch.presenceState()).length);partyUI()}});
+ ch.subscribe(s=>{if(!PARTY)return;if(s==='SUBSCRIBED'){PARTY.st='ok';ch.track({name:partyName()});ch.send({type:'broadcast',event:'p',payload:{t:'ask'}})}else if(s==='CHANNEL_ERROR'||s==='TIMED_OUT')PARTY.st='err';partyUI();nav()});
+ nav();return true}
+function leaveParty(q){if(!PARTY)return;try{SBC.removeChannel(PARTY.ch)}catch{}PARTY=null;nav();if(!q)partyUI()}
+function joinParty(code,type,id){if(!/^[A-Z0-9]{4,8}$/i.test(code||'')||!type||!id){location.replace('#/');return}
+ if(!startParty(code.toUpperCase(),type,id)){app.innerHTML='<p class="err">Watch parties need account sign-in to be set up, and an internet connection.</p>';return}
+ location.replace('#/item/'+type+'/'+encodeURIComponent(id))}
+const psend=p=>{if(PARTY&&PARTY.st==='ok')PARTY.ch.send({type:'broadcast',event:'p',payload:p})};
+function onParty(m){if(!PARTY||!m)return;
+ if(m.t==='chat'){PARTY.msgs.push({n:m.n,x:m.x});PARTY.msgs=PARTY.msgs.slice(-30);partyUI();return}
+ if(m.t==='ask'){setTimeout(()=>{const v=$('#pl');if(v&&!v.hidden&&(v.currentSrc||v.src))psend({t:'s',p:!v.paused,time:v.currentTime})},Math.random()*500);return}
+ if(m.t==='s'){PARTY.last=m;applyParty()}}
+function applyParty(){const m=PARTY&&PARTY.last,v=$('#pl');if(!m||!v||v.hidden||!(v.currentSrc||v.src))return;
+ PARTY.ig=true;if(Math.abs(v.currentTime-m.time)>1.5)try{v.currentTime=m.time}catch{}
+ if(m.p&&v.paused)v.play().catch(()=>{});if(!m.p&&!v.paused)v.pause();
+ setTimeout(()=>{if(PARTY)PARTY.ig=false},800)}
+function partyHook(v){if(!PARTY)return;v._rd=false;
+ const sd=()=>{if(PARTY&&!PARTY.ig&&v._rd)psend({t:'s',p:!v.paused,time:v.currentTime})};
+ ['play','pause','seeked'].forEach(e=>v.addEventListener(e,sd));
+ v.addEventListener('loadeddata',()=>{applyParty();setTimeout(()=>{v._rd=true},1200)},{once:true})}
+function partyUI(){const el=$('#pty');if(!el)return;if(!PARTY||PARTY.type!==(CUR&&CUR.type)||PARTY.id!==(CUR&&CUR.id)){el.innerHTML=PARTY?`<p class="muted">You are in party ${PARTY.code} for another title. <a href="#/item/${esc(PARTY.type)}/${encodeURIComponent(PARTY.id)}" style="color:var(--ac)">Go there</a></p>`:'';return}
+ if(!$('#pbox')){el.innerHTML=`<div class="ad" id="pbox" style="display:block"><b>👥 Watch party <span id="pcode"></span></b> · <span id="pst"></span><div class="eps"><button id="pcp">Copy invite link</button> <button class="ghost" id="psy">🔄 Sync</button> <button class="ghost" id="plv">Leave</button></div><div id="pch" style="max-height:140px;overflow:auto"></div><form id="pcf"><input id="pci" maxlength="200" placeholder="Say something"><button>Send</button></form><small class="muted">Everyone plays their own source. Only play, pause and position are shared.</small></div>`;
+  $('#pcp').onclick=async e=>{const l=location.origin+location.pathname+'#/party/'+PARTY.code+'/'+PARTY.type+'/'+encodeURIComponent(PARTY.id);try{if(navigator.share)await navigator.share({title:'Watch with me',url:l});else{await navigator.clipboard.writeText(l);e.target.textContent='Copied'}}catch{}};
+  $('#psy').onclick=()=>psend({t:'ask'});$('#plv').onclick=()=>leaveParty();
+  $('#pcf').onsubmit=e=>{e.preventDefault();const x=$('#pci').value.trim();if(!x)return;psend({t:'chat',n:partyName(),x});PARTY.msgs.push({n:'You',x});$('#pci').value='';partyUI()}}
+ $('#pcode').textContent=PARTY.code;$('#pst').innerHTML=PARTY.st==='ok'?PARTY.n+' here':PARTY.st==='err'?'<span class="err">could not connect</span>':'connecting…';
+ const ch=$('#pch');ch.innerHTML=PARTY.msgs.map(m=>`<div><b>${esc(m.n)}</b> ${esc(m.x)}</div>`).join('');ch.scrollTop=ch.scrollHeight}
+function mark(){if(!CUR)return;const m=CUR.meta;
+ if(CUR.src){S.links[CUR.type+':'+CUR.id]={src:CUR.src,an:CUR.an||'',vid:CUR.vid,label:CUR.label,t:Date.now()};const ks=Object.keys(S.links).sort((a,b)=>S.links[b].t-S.links[a].t);ks.slice(30).forEach(k=>delete S.links[k]);store.set('links',S.links)}
+S.hist=[{id:CUR.id,type:CUR.type,name:m.name,poster:m.poster||'',vid:CUR.vid,label:CUR.label,t:Date.now()},...S.hist.filter(x=>!(x.id===CUR.id&&x.type===CUR.type))].slice(0,20);saveUrls()}
+async function getSubs(type,id){const out=[];DBG=[];await Promise.allSettled(S.addons.filter(a=>has(a,'subtitles',type,id)).map(async a=>{const u=`${a.base}/subtitles/${type}/${encodeURI(id)}.json`;try{const d=await J(u);const l=d.subtitles||[];l.forEach(s=>out.push(s));DBG.push({n:a.m.name,u,c:l.length})}catch(e){DBG.push({n:a.m.name,u,c:'error ('+(e.message||e.name)+')'})}}));return out}
+function fillSubs(subs){const el=$('#sub'),sn=$('#sn');if(!el)return;if(subs)SUBS=subs;const all=[...SUBS,...OWN].filter(s=>s&&s.url);
+ if(!all.length){if(subs&&sn)sn.innerHTML=DBG.length?DBG.map(d=>`Subtitles from ${esc(d.n)}: ${esc(d.c)} found · <a href="${esc(d.u)}" target="_blank" rel="noopener" style="color:var(--ac)">check</a>`).join('<br>'):`Subtitles: no installed addon handles this title (ID ${esc(SID)}). Add OpenSubtitles on Discover → Addons.`;el.hidden=true;return}
+ all.sort((a,b)=>(b.lang==='eng')-(a.lang==='eng'));const n={},u=all.filter(s=>(n[s.lang]=(n[s.lang]||0)+1)<=4).slice(0,24);const c2={};
+ el.innerHTML='<option value="">Subtitles: off</option>'+u.map(s=>{c2[s.lang]=(c2[s.lang]||0)+1;return `<option value="${esc(s.url)}">${esc((s.lang||'?').toUpperCase())} ${c2[s.lang]}</option>`}).join('');el.hidden=false;if(sn)sn.textContent='';
+ el.onchange=()=>{setSub($('#pl'),el.value);document.querySelectorAll('a[data-u]').forEach(x=>{x.href=vlc(x.dataset.u,el.value)})}}
+const toVtt=t=>t.startsWith('WEBVTT')?t:'WEBVTT\n\n'+t.replace(/\r/g,'').replace(/(\d+:\d+:\d+),(\d+)/g,'$1.$2');
+const fmt=s=>{s=Math.max(0,s);const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60;return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+x.toFixed(3).padStart(6,'0')};
+const shiftVtt=(t,o)=>!o?t:t.split('\n').map(l=>l.includes('-->')?l.replace(/(?:(\d+):)?(\d+):(\d+)\.(\d+)/g,(_,H,M,S2,ms)=>fmt((+H||0)*3600+(+M)*60+(+S2)+parseFloat('0.'+ms)+o)):l).join('\n');
+function paintSub(v){v.querySelectorAll('track').forEach(t=>t.remove());if(!SRAW)return;const tr=document.createElement('track');tr.kind='subtitles';tr.default=true;tr.src=URL.createObjectURL(new Blob([shiftVtt(SRAW,SDOFF)],{type:'text/vtt'}));v.appendChild(tr);tr.track.mode='showing'}
+async function setSub(v,u){v.querySelectorAll('track').forEach(t=>t.remove());SRAW='';if(!u)return;try{SRAW=toVtt(await(await fetch(u)).text());paintSub(v)}catch{const pe=$('#pe');pe.textContent='Could not load that subtitle file.';pe.hidden=false}}
+function library(){app.innerHTML='<h2>My Library</h2>'+(S.lib.length?`<p><button class="ghost" id="lr">🎲 Random pick</button></p><div class="grid">${cards(S.lib)}</div>`:'<p class="muted">Nothing saved yet. Open a title and tap Add to Library.</p>');if($('#lr'))$('#lr').onclick=()=>goItem(pick(S.lib))}
+let D={t:'',ci:0,g:'',tok:0};
+function discover(sub){
+ app.innerHTML=`<div class="eps"><button class="${sub?'':'on'}" data-t="">Browse</button><button class="${sub?'on':''}" data-t="addons">Addons</button></div><div id="dv"></div>`;
+ app.onclick=e=>{const b=e.target.closest('[data-t]');if(b)location.hash='#/discover'+(b.dataset.t?'/'+b.dataset.t:'')};
+ sub==='addons'?dAddons():dBrowse()}
+function dBrowse(){
+ const all=catsAll();
+ const types=[...new Set(all.map(x=>x.c.type))];
+ if(!types.length){$('#dv').innerHTML='<p class="muted">No browsable catalogs yet. Add an addon first.</p>';return}
+ if(!types.includes(D.t))D.t=types[0];
+ const list=all.filter(x=>x.c.type===D.t);if(D.ci>=list.length)D.ci=0;
+ const cur=list[D.ci],gx=cx(cur.c).find(e=>e.name==='genre'),gs=(gx&&gx.options)||[],rg=!!reqG(cur.c);if(!gs.includes(D.g))D.g=rg?gs[0]:'';
+ $('#dv').innerHTML=`<form id="df" onsubmit="return false"><select id="dt">${types.map(t=>`<option ${t===D.t?'selected':''}>${esc(t)}</option>`).join('')}</select><select id="dc">${list.map((x,i)=>`<option value="${i}" ${i===D.ci?'selected':''}>${esc((x.c.name||x.c.id)+' · '+x.a.m.name)}</option>`).join('')}</select>${gs.length?`<select id="dg">${rg?'':'<option value="">All genres</option>'}${gs.map(g=>`<option ${g===D.g?'selected':''}>${esc(g)}</option>`).join('')}</select>`:''}<button type="button" class="ghost" id="dr">🎲 Random</button></form><div id="dgrid" class="grid" style="margin-top:16px"></div><p><button id="dm" class="ghost" hidden>Load more</button></p>`;
+ $('#dt').onchange=e=>{D.t=e.target.value;D.ci=0;D.g='';dBrowse()};
+ $('#dc').onchange=e=>{D.ci=+e.target.value;D.g='';dBrowse()};
+ if($('#dg'))$('#dg').onchange=e=>{D.g=e.target.value;dBrowse()};
+ const my=++D.tok,seen=new Set();let skip=0;D.items=[];
+ const load=async()=>{const bt=$('#dm');bt.hidden=true;const ex=[D.g&&'genre='+encodeURIComponent(D.g),...reqO(cur.c),skip&&'skip='+skip].filter(Boolean).join('&');
+  try{const d=await J(`${cur.a.base}/catalog/${cur.c.type}/${encodeURIComponent(cur.c.id)}${ex?'/'+ex:''}.json`,25000);if(my!==D.tok)return;const raw=d.metas||[],ms=vis(raw,cur.c.type).filter(m=>!seen.has(m.id));ms.forEach(m=>{seen.add(m.id);D.items.push({...m,type:m.type||cur.c.type})});skip+=raw.length;
+   const g=$('#dgrid');if(!g)return;g.insertAdjacentHTML('beforeend',cards(ms,cur.c.type));if(!skip)g.innerHTML='<p class="muted">Nothing here.</p>';bt.hidden=!raw.length}
+  catch{const g=$('#dgrid');if(g&&my===D.tok)g.insertAdjacentHTML('beforeend','<p class="muted">This catalog did not respond.</p>')}};
+ $('#dm').onclick=load;$('#dr').onclick=()=>{if(D.items.length)goItem(pick(D.items))};load()}
+async function dAddons(){
+ const el=$('#dv');el.innerHTML='<p class="muted">Looking for addons…</p>';
+ const found=new Map(),add=(u,m,off)=>{if(u&&/^https?:/.test(u)&&!found.has(u))found.set(u,{u,m:m||{},off})};
+ await Promise.allSettled(S.addons.flatMap(a=>(a.m.addonCatalogs||[]).slice(0,4).map(async c=>{const d=await J(`${a.base}/addon_catalog/${c.type}/${c.id}.json`);(d.addons||[]).forEach(x=>add(x.transportUrl,x.manifest,x.flags&&x.flags.official))})));
+ try{const d=await J('https://api.strem.io/addonscollection.json'),arr=Array.isArray(d)?d:(d.addons||[]);arr.forEach(x=>add(x.transportUrl,x.manifest,x.flags&&x.flags.official))}catch{}
+ if(!found.size)for(const u of [CINE,'https://opensubtitles-v3.strem.io/manifest.json','https://watchhub.strem.io/manifest.json','https://v3-channels.strem.io/manifest.json']){try{add(u,await J(u),true)}catch{}}
+ const bh=x=>x.m.behaviorHints||{};
+ const all=[...found.values()].filter(x=>x.m.name&&!bh(x).adult&&!bh(x).configurationRequired).sort((a,b)=>(!!b.off-!!a.off)||a.m.name.localeCompare(b.m.name));
+ const draw=q=>{const L=all.filter(x=>!S.urls.includes(x.u)&&(!q||(x.m.name+' '+(x.m.description||'')).toLowerCase().includes(q))).slice(0,60);
+  $('#al').innerHTML=L.length?L.map(x=>`<div class="ad"><div><b>${esc(x.m.name)}</b>${x.off?' · Official':''}<small>${esc((x.m.description||'').slice(0,140))}</small><small>${esc((x.m.types||[]).join(', '))}${bh(x).p2p?' · torrent-based, not playable in a browser':''}</small></div><button data-u="${esc(x.u)}">Add</button></div>`).join(''):'<p class="muted">Nothing to show.</p>'};
+ el.innerHTML=`<p class="muted">Addons from Stremio's public list and from your installed addons. ${esc(NAME)} hosts no media: add only addons and sources you have the right to use.</p><form onsubmit="return false"><input id="aq" placeholder="Filter addons"></form><div id="al"></div>`;
+ $('#aq').oninput=e=>draw(e.target.value.toLowerCase());draw('');
+ el.onclick=async e=>{const b=e.target.closest('[data-u]');if(!b)return;b.disabled=true;b.textContent='Adding…';S.urls.push(b.dataset.u);await saveUrls();await loadAddons();draw($('#aq').value.toLowerCase())}}
+function addons(){
+ app.innerHTML=`<h2>Addons</h2><p class="muted">Paste an addon's manifest link. ${esc(NAME)} hosts no media: add only addons and sources you have the right to use. Addon links must start with https.</p><form id="af"><input id="au" placeholder="https://example.com/manifest.json"><button>Add</button></form><p id="am" class="err"></p>${S.addons.length<S.urls.length?'<p><button class="ghost" id="rt">Retry failed addons</button></p>':''}
+ ${S.urls.map((u,i)=>{const a=S.addons.find(x=>x.url===u);return `<div class="ad"><div><b>${esc(a?a.m.name:'Not loaded')}</b><small>${esc(u)}</small>${a?`<small>${(a.m.catalogs||[]).length} catalogs · ${(a.m.catalogs||[]).filter(browsable).length} on Home and Discover · ${(a.m.catalogs||[]).filter(searchable).length} searchable</small>`:''}${a?'':`<small class="err">${esc((S.fail&&S.fail[u])||'')}</small>`}</div><button class="ghost" data-d="${i}">Remove</button></div>`}).join('')}`;
+ $('#af').onsubmit=async e=>{e.preventDefault();const u=norm($('#au').value);try{const m=await J(u,20000);if(!m||!(m.id||m.name))throw new Error('bad');if(!S.urls.includes(u))S.urls.push(u);await saveUrls();await loadAddons();addons()}catch(x){$('#am').textContent=why(x,u)}};
+ if($('#rt'))$('#rt').onclick=async()=>{$('#rt').textContent='Retrying…';await loadAddons();addons()};
+ app.onclick=async e=>{const b=e.target.closest('[data-d]');if(!b)return;S.urls.splice(+b.dataset.d,1);await saveUrls();await loadAddons();addons()}}
+function account(){if(S.user||!sb||store.get('guest'))profile();else authForm()}
+function authForm(){
+ app.innerHTML=`<div class="auth"><h2>Sign in to ${esc(NAME)}</h2><form id="lf"><input id="em" type="email" placeholder="Email" required autocomplete="email"><input id="pw" type="password" placeholder="Password (6+ characters)" required minlength="6" autocomplete="current-password"><button data-m="in">Sign in</button><button type="button" class="ghost" id="su">Create account</button></form><p id="ae" class="err"></p><a href="#/" id="gu" class="muted">Continue without an account</a></div>`;
+ const go=async m=>{const email=$('#em').value.trim(),password=$('#pw').value;if(!email||password.length<6){$('#ae').textContent='Enter your email and a password of at least 6 characters.';return}try{const j=await sbf(m==='up'?'/auth/v1/signup':'/auth/v1/token?grant_type=password',{method:'POST',body:JSON.stringify({email,password})});if(!j.access_token){$('#ae').textContent='Check your email to confirm your account, then sign in.';return}setSession(j);await loadAddons();afterAuth()}catch(x){$('#ae').textContent=x.message}};
+ $('#lf').onsubmit=e=>{e.preventDefault();go('in')};$('#su').onclick=()=>go('up');$('#gu').onclick=e=>{e.preventDefault();store.set('guest',true);afterAuth()}}
+const seenN=()=>Object.keys(S.seen).length,ratedN=()=>Object.keys(S.rate).length;
+const BADGES=[['🎬','First pick','Save a title to your Library',()=>S.lib.length>=1],['📚','Collector','Save 10 titles to your Library',()=>S.lib.length>=10],['🏛️','Curator','Save 50 titles to your Library',()=>S.lib.length>=50],['✅','Finisher','Mark 5 titles watched',()=>seenN()>=5],['🍿','Binge watcher','Mark 25 titles watched',()=>seenN()>=25],['👍','Critic','Rate 10 titles',()=>ratedN()>=10],['🗂️','Organizer','Create a collection',()=>Object.keys(S.cols).length>=1],['🔌','Addon explorer','Install 3 addons',()=>S.urls.length>=3],['👥','Party host','Start a watch party',()=>!!store.get('pf',0)]];
+const svP=()=>{store.set('cb',S.cb);store.set('show',S.show);store.set('cols',S.cols)};
+const tile=(m,rm)=>`<div class="card"><a ${m.id?`href="#/item/${esc(m.type)}/${encodeURIComponent(m.id)}"`:''} style="color:inherit;text-decoration:none;display:block"><img loading="lazy" src="${esc(m.poster||'')}" alt=""></a><b class="wm" style="cursor:pointer;background:#ff6b6b" ${rm}>✕</b><span>${esc(m.name)}</span></div>`;
+function profile(){
+ const a=S.prof.a||'🎬',av=/^https:\/\//.test(a)?`<img src="${esc(a)}" alt="" style="width:72px;height:72px;border-radius:50%;object-fit:cover;background:var(--pan)">`:`<div style="width:72px;height:72px;border-radius:50%;background:var(--pan);display:grid;place-items:center;font-size:36px">${esc(a)}</div>`;
+ const ks=Object.keys(S.cols),earned=BADGES.filter(b=>b[3]()).length+S.cb.length;
+ const acct=S.user?`<p>${esc(S.user.email)}</p><p class="muted">Your addons, Library, Continue Watching and profile name sync to this account.</p><button id="so">Sign out</button>`:(sb?`<p class="muted">You're browsing without an account. Sign in to sync your addons, Library and profile.</p><button id="si">Sign in</button>`:`<p class="muted">Sign-in isn't set up yet, so everything is saved on this device only.</p>`);
+ app.innerHTML=`<div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">${av}<div style="flex:1;min-width:180px"><h2 style="margin:0">${esc(S.prof.n||(S.user?S.user.email.split('@')[0]:'Your profile'))}</h2><p class="muted" style="margin:4px 0">${esc(S.prof.b||'Add a short bio')}</p><button class="ghost" id="pe">Edit profile</button></div></div><div id="pef"></div>
+ <p class="muted">${S.lib.length} in Library · ${seenN()} watched · ${ratedN()} rated · ${ks.length} collections</p>
+ <h2>Badges<small>${earned} earned · tap one to see how</small></h2><div class="eps">${BADGES.map(b=>`<button class="ghost" data-bh="${esc(b[1]+': '+b[2])}" style="${b[3]()?'':'opacity:.35'}">${b[0]} ${esc(b[1])}</button>`).join('')}${S.cb.map((b,i)=>`<button class="ghost" data-cb="${i}">${esc(b.e)} ${esc(b.t)} ✕</button>`).join('')}</div><p class="muted" id="bhint"></p>
+ <form id="cbf"><input id="cbe" maxlength="2" placeholder="😀" style="max-width:70px;flex:0 0 70px;min-width:0"><input id="cbt" maxlength="20" placeholder="Custom badge name"><button>＋ Add badge</button></form>
+ <h2>Poster showcase<small>${S.show.length}/8</small></h2><div class="grid">${S.show.map((m,i)=>tile(m,`data-rs="${i}"`)).join('')||'<p class="muted">Show off your favourite posters.</p>'}</div><div id="paf"></div><p><button class="ghost" id="pa">＋ Add poster</button></p>
+ <h2>Collections</h2>${ks.map((n,ki)=>`<div class="ad" style="display:block"><b>${esc(n)}</b> <span class="muted">${S.cols[n].length} titles</span> <button class="ghost" data-dc="${ki}" style="float:right">Delete</button><div class="row" style="margin-top:8px">${S.cols[n].map((m,i)=>tile(m,`data-rc="${ki}:${i}"`)).join('')||'<span class="muted">Empty. Open a title and use its ＋ Collection menu.</span>'}</div></div>`).join('')}
+ <form id="colf"><input id="coln" maxlength="30" placeholder="New collection name"><button>＋ Create</button></form>
+ <h2>Account</h2>${acct}`;
+ app.onclick=e=>{const q=s=>e.target.closest(s);let b;
+  if(b=q('[data-bh]')){$('#bhint').textContent=b.dataset.bh;return}
+  if(b=q('[data-cb]')){S.cb.splice(+b.dataset.cb,1);svP();profile();return}
+  if(b=q('[data-rs]')){e.preventDefault();S.show.splice(+b.dataset.rs,1);svP();profile();return}
+  if(b=q('[data-dc]')){const k=ks[+b.dataset.dc];if(k&&confirm('Delete the collection "'+k+'"?')){delete S.cols[k];svP();profile()}return}
+  if(b=q('[data-rc]')){e.preventDefault();const[ki,i]=b.dataset.rc.split(':').map(Number),k=ks[ki];if(k){S.cols[k].splice(i,1);svP();profile()}return}
+  if(q('#so')){S.token=S.user=null;store.set('sess',null);store.set('guest',false);location.hash='#/account';nav();account();return}
+  if(q('#si')){store.set('guest',false);nav();authForm();return}
+  if(q('#pe')){$('#pef').innerHTML='<form id="pff" class="ad" style="display:block"><input id="pfn" maxlength="30" placeholder="Display name"><input id="pfb" maxlength="120" placeholder="Short bio"><input id="pfa" maxlength="200" placeholder="Avatar: an emoji or an https image link"><button>Save</button></form>';
+   $('#pfn').value=S.prof.n||'';$('#pfb').value=S.prof.b||'';$('#pfa').value=S.prof.a||'';
+   $('#pff').onsubmit=ev=>{ev.preventDefault();let av2=$('#pfa').value.trim();if(/^https?:/i.test(av2)&&!/^https:/i.test(av2))av2='🎬';S.prof={n:$('#pfn').value.trim(),b:$('#pfb').value.trim(),a:av2||'🎬'};saveUrls();profile()};return}
+  if(q('#pa')){$('#paf').innerHTML=`<div class="ad" style="display:block"><b>Add a poster</b><div class="eps"><select id="pl2"><option value="">Pick from my Library…</option>${S.lib.map((m,i)=>`<option value="${i}">${esc(m.name)}</option>`).join('')}</select><button id="pls">Add</button></div><p class="muted" style="margin:6px 0">Or use your own picture:</p><form id="pcu"><input id="pct" maxlength="40" placeholder="Title"><input id="pcl" placeholder="https://… image link"><button>Add</button></form></div>`;
+   $('#pcu').onsubmit=ev=>{ev.preventDefault();const t=$('#pct').value.trim(),l=$('#pcl').value.trim();if(t&&/^https:\/\//i.test(l)&&S.show.length<8){S.show.push({type:'',id:'',name:t,poster:l});svP();profile()}};return}
+  if(q('#pls')){const i=$('#pl2').value;if(i!==''&&S.show.length<8){const m=S.lib[+i];S.show.push({type:m.type,id:m.id,name:m.name,poster:m.poster||''});svP();profile()}return}};
+ $('#cbf').onsubmit=e=>{e.preventDefault();const t=$('#cbt').value.trim();if(t&&S.cb.length<8){S.cb.push({e:$('#cbe').value.trim()||'⭐',t});svP();profile()}};
+ $('#colf').onsubmit=e=>{e.preventDefault();const n=$('#coln').value.trim().replace(/[|:]/g,'');if(n&&!S.cols[n]){S.cols[n]=[];svP();profile()}}}
+function nav(){const p=location.hash.slice(2).split('/')[0]||'home';$('#nav').innerHTML=[['home','#/','Home'],['search','#/search/','Search'],['discover','#/discover','Discover'],['library','#/library','Library'],['multi','#/multi','Multi'+(MV.filter(Boolean).length?' ('+MV.filter(Boolean).length+')':'')],['addons','#/addons','Addons'],['account','#/account',S.user||!sb||store.get('guest')?'Profile':'Sign in']].concat(PARTY?[['party','#/item/'+PARTY.type+'/'+encodeURIComponent(PARTY.id),'👥 '+PARTY.code]]:[]).map(([k,h,t])=>`<a href="${h}" class="${p===k?'on':''}">${t}</a>`).join('')}
+function route(){const p=location.hash.slice(2).split('/');app.onclick=null;clearInterval(nxT);MVH.forEach(x=>{try{x&&x.destroy()}catch{}});MVH=[];nav();
+ if(sb&&!S.user&&!store.get('guest')&&p[0]!=='account'){if(p[0]==='party')store.set('pend',location.hash);location.hash='#/account';return}
+ ({'':()=>home(),search:()=>search(decodeURIComponent(p[1]||'')),addons,library,multi,party:()=>joinParty(p[1],p[2],decodeURIComponent(p[3]||'')),account,discover:()=>discover(p[1]),item:()=>item(p[1],decodeURIComponent(p[2]||''))}[p[0]]||home)()}
+addEventListener('hashchange',route);
+if('serviceWorker'in navigator)addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+(async()=>{app.innerHTML='<p class="muted">Loading…</p>';await restore();await loadAddons();route()})();
+</script></body></html>
